@@ -1,276 +1,274 @@
+; Langrisser II (J) (r02) - MD+ audio patch
+;
+; The original game normally queues sounds through $FD7A using SOUND_COMMAND
+; and SOUND_PRIORITY. A few cutscenes write directly to Z80 RAM; the hooks
+; below redirect those sites back through the same original interface.
 
-IO_Z80BUS                                       equ $A11100
+IO_Z80BUS                      equ $A11100
 
-TOTAL_TRACKS                                    equ 31
+SOUND_COMMAND                  equ $FFA6DA
+SOUND_PRIORITY                 equ $FFA6DB
+Z80_SOUND_PRIORITY             equ $A01FFE
+Z80_SOUND_COMMAND              equ $A01FFF
 
-; Constants: ---------------------------------------------------------------------------------
-        MD_PLUS_OVERLAY_PORT:                   equ $0003F7FA
-        MD_PLUS_CMD_PORT:                       equ $0003F7FE
-        MD_PLUS_RESPONSE_PORT:                  equ $0003F7FC
-	
-; OVERWRITES: --------------------------------------------------------------------------------------
+ORIGINAL_SOUND_STOP            equ $FCBA
+ORIGINAL_SOUND_FADE            equ $FCCE
+ORIGINAL_SOUND_SEND            equ $FD7A
 
+MD_PLUS_OVERLAY_PORT           equ $0003F7FA
+MD_PLUS_RESPONSE_PORT          equ $0003F7FC
+MD_PLUS_CMD_PORT               equ $0003F7FE
+
+MD_PLUS_FIRST_BGM_TRACK        equ 2
+MD_PLUS_TABLE_END              equ $FFFF
+
+; Hooks: ------------------------------------------------------------------------------------------
+
+        ; Opening sequence. This replaces: move.l #$0002D918,D0
         org     $2D1BE
         jsr     MD_PLUS_PLAY_SEGA
 
-        org     $FD7A                           ; General Sounds Routine
-        jsr     PROCESS_GENERAL_SOUNDS
-        jmp     $FDA8
+        ; Replace the game's standard Z80 mailbox writer with our dispatcher.
+        org     ORIGINAL_SOUND_SEND
+        jmp     MD_PLUS_SOUND_DISPATCH
 
-        org     $21C32                          ; 29
-        move.l  D0,-(SP)
-        move.b  #$29,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+; Direct sound writes: ---------------------------------------------------------------------------
+;
+; These original routines bypass $FD7A and write straight to $A01FFE/$A01FFF.
+; Each hook now re-enters the game's standard sound-command path.
+
+        org     $21C32                          ; BGM $29
+        jsr     QUEUE_BGM_29
         jmp     $21C5C
 
-        org     $2215E                          ; FD
-        move.l  D0,-(SP)
-        move.b  #$FD,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2215E                          ; Fade $FD
+        jsr     ORIGINAL_SOUND_FADE
         jmp     $22188
 
-        org     $25F92                          ; 2E
-        move.l  D0,-(SP)
-        move.b  #$2E,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $25F92                          ; BGM $2E
+        jsr     QUEUE_BGM_2E
         jmp     $25FBC
 
-        org     $29662                          ; 01
-        move.l  D0,-(SP)
-        move.b  #$01,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $29662                          ; BGM $01
+        jsr     QUEUE_BGM_01
         jmp     $2968C
 
-        org     $2D0C2                          ; FE
-        move.l  D0,-(SP)
-        move.b  #$FE,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2D0C2                          ; Stop $FE
+        jsr     ORIGINAL_SOUND_STOP
         jmp     $2D0EC
 
-        org     $2D344                          ; 2A
-        move.l  D0,-(SP)
-        move.b  #$2A,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2D344                          ; BGM $2A
+        jsr     QUEUE_BGM_2A
         jmp     $2D36E
 
-        org     $2D50C                          ; FD
-        move.l  D0,-(SP)
-        move.b  #$FD,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2D50C                          ; Fade $FD
+        jsr     ORIGINAL_SOUND_FADE
         jmp     $2D536
 
-        org     $2D59C                          ; FD
-        move.l  D0,-(SP)
-        move.b  #$FD,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2D59C                          ; Fade $FD
+        jsr     ORIGINAL_SOUND_FADE
         jmp     $2D5C6
 
-        org     $2D694                          ; FE
-        move.l  D0,-(SP)
-        move.b  #$FE,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2D694                          ; Stop $FE
+        jsr     ORIGINAL_SOUND_STOP
         jmp     $2D6BE
 
-        org     $2D7CE                          ; 2A
-        move.l  D0,-(SP)
-        move.b  #$2A,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2D7CE                          ; BGM $2A
+        jsr     QUEUE_BGM_2A
         jmp     $2D7F8
 
-        org     $2D806                          ; FE
-        move.l  D0,-(SP)
-        move.b  #$FE,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2D806                          ; Stop $FE
+        jsr     ORIGINAL_SOUND_STOP
         jmp     $2D830
 
-        org     $2D83A                          ; 2A
-        move.l  D0,-(SP)
-        move.b  #$2A,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2D83A                          ; BGM $2A
+        jsr     QUEUE_BGM_2A
         jmp     $2D864
 
-        org     $2DEE0                          ; FE
-        move.l  D0,-(SP)
-        move.b  #$FE,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2DEE0                          ; Stop $FE
+        jsr     ORIGINAL_SOUND_STOP
         jmp     $2DF0A
 
-        org     $2DF14                          ; 2A
-        move.l  D0,-(SP)
-        move.b  #$2A,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2DF14                          ; BGM $2A
+        jsr     QUEUE_BGM_2A
         jmp     $2DF3E
 
-        org     $2E47C                          ; 2B
-        move.l  D0,-(SP)
-        move.b  #$2B,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2E47C                          ; BGM $2B
+        jsr     QUEUE_BGM_2B
         jmp     $2E4A6
 
-        org     $2F73E                          ; FE
-        move.l  D0,-(SP)
-        move.b  #$FE,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2F73E                          ; Stop $FE
+        jsr     ORIGINAL_SOUND_STOP
         jmp     $2F768
 
-        org     $2F772                          ; 2C
-        move.l  D0,-(SP)
-        move.b  #$2C,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $2F772                          ; BGM $2C
+        jsr     QUEUE_BGM_2C
         jmp     $2F79C
 
-        org     $30BD4                          ; FD
-        move.l  D0,-(SP)
-        move.b  #$FD,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $30BD4                          ; Fade $FD
+        jsr     ORIGINAL_SOUND_FADE
         jmp     $30BFE
 
-        org     $30C90                          ; 2D
-        move.l  D0,-(SP)
-        move.b  #$2D,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
+        org     $30C90                          ; BGM $2D
+        jsr     QUEUE_BGM_2D
         jmp     $30CBA
 
-
-; PADDED SPACE: ------------------------------------------------------------------------------------
+; Patch code in unused ROM padding: ---------------------------------------------------------------
 
         org     $311B0
 
-MD_PLUS_PLAY_SEGA:
-        move.l  D1,-(SP)
-        move.w  #($1100|1),D1                   ; Play Track 1
-        jsr     WRITE_MD_PLUS_FUNCTION
-        move.l  (SP)+,D1
-        move.l  #$0002D918,D0                   ; Adopt original instruction
-        rts
+; Fixed-command wrappers preserve all registers and feed direct cutscene BGM
+; requests back through the original SOUND_COMMAND/SOUND_PRIORITY interface.
 
-; TABLES: ------------------------------------------------------------------------------------------
-    align 2
+QUEUE_BGM_01:
+        move.b  #$01,(SOUND_COMMAND).l
+        bra.w   QUEUE_BGM
 
-AUDIO_TBL     ;cmd;code ; #Track Name                 #No.
-        dc.w    $122A   ; Opening Theme (Part 1)       01
-        dc.w    $112B   ; Opening Theme (Part 2)       02
-        dc.w    $122E   ; Main Theme of Langrisser     03
-        dc.w    $1201   ; Neo Holy War                 04
-        dc.w    $1209   ; Leon                         05
-        dc.w    $1202   ; Knight's Errand              06
-        dc.w    $120A   ; Bargas                       07
-        dc.w    $1208   ; One's Side                   08
-        dc.w    $1221   ; Morgan                       09
-        dc.w    $1203   ; No Surrender                 10
-        dc.w    $120C   ; Jessica                      11
-        dc.w    $120D   ; Ancient Magic                12
-        dc.w    $1222   ; The Evil Person              13
-        dc.w    $1228   ; Enemy Reinforcements         14
-        dc.w    $120E   ; Riana                        15
-        dc.w    $1204   ; Fight it Out                 16
-        dc.w    $1223   ; Eggbert                      17
-        dc.w    $1205   ; The Legend of Sword          18
-        dc.w    $1229   ; Shop                         19
-        dc.w    $1224   ; Imelda                       20
-        dc.w    $1225   ; The Dark Princess            21
-        dc.w    $1226   ; Bosel                        22
-        dc.w    $120B   ; Aniki                        23
-        dc.w    $1206   ; Soldier                      24
-        dc.w    $1227   ; Bernhardt                    25
-        dc.w    $1207   ; The Last Battle              26
-        dc.w    $112C   ; Ending Theme (Part 1)        27
-        dc.w    $1230   ; A Story Forever (Part 1)     28
-        dc.w    $112D   ; A Story Forever (Part 2)     29
-        dc.w    $1131   ; Ending Theme (Part 4)        30
-        dc.w    $122F   ; Requiem                      31
+QUEUE_BGM_29:
+        move.b  #$29,(SOUND_COMMAND).l
+        bra.w   QUEUE_BGM
 
-; Sound: -------------------------------------------------------------------------------------
+QUEUE_BGM_2A:
+        move.b  #$2A,(SOUND_COMMAND).l
+        bra.w   QUEUE_BGM
 
-PLAY_SOUND:
-        movem.l D1-D3/A2,-(SP)
-        cmpi.b  #$FE,D0 
+QUEUE_BGM_2B:
+        move.b  #$2B,(SOUND_COMMAND).l
+        bra.w   QUEUE_BGM
+
+QUEUE_BGM_2C:
+        move.b  #$2C,(SOUND_COMMAND).l
+        bra.w   QUEUE_BGM
+
+QUEUE_BGM_2D:
+        move.b  #$2D,(SOUND_COMMAND).l
+        bra.w   QUEUE_BGM
+
+QUEUE_BGM_2E:
+        move.b  #$2E,(SOUND_COMMAND).l
+        bra.w   QUEUE_BGM
+
+QUEUE_BGM:
+        clr.b   (SOUND_PRIORITY).l
+        jmp     ORIGINAL_SOUND_SEND
+
+; Track table: ------------------------------------------------------------------------------------
+;
+; Each word is [MD+ command][original BGM command]. $11 plays once and $12
+; loops. The external MD+ track number is the table position plus 2 because
+; MD+ track 1 is reserved for the opening SEGA sequence.
+
+        align   2
+
+MD_PLUS_TRACK_TABLE:
+        dc.w    $122A                           ; MD+ 02 - Opening Theme (Part 1)
+        dc.w    $112B                           ; MD+ 03 - Opening Theme (Part 2)
+        dc.w    $122E                           ; MD+ 04 - Main Theme of Langrisser
+        dc.w    $1201                           ; MD+ 05 - Neo Holy War
+        dc.w    $1209                           ; MD+ 06 - Leon
+        dc.w    $1202                           ; MD+ 07 - Knight's Errand
+        dc.w    $120A                           ; MD+ 08 - Bargas
+        dc.w    $1208                           ; MD+ 09 - One's Side
+        dc.w    $1221                           ; MD+ 10 - Morgan
+        dc.w    $1203                           ; MD+ 11 - No Surrender
+        dc.w    $120C                           ; MD+ 12 - Jessica
+        dc.w    $120D                           ; MD+ 13 - Ancient Magic
+        dc.w    $1222                           ; MD+ 14 - The Evil Person
+        dc.w    $1228                           ; MD+ 15 - Enemy Reinforcements
+        dc.w    $120E                           ; MD+ 16 - Riana
+        dc.w    $1204                           ; MD+ 17 - Fight it Out
+        dc.w    $1223                           ; MD+ 18 - Eggbert
+        dc.w    $1205                           ; MD+ 19 - The Legend of Sword
+        dc.w    $1229                           ; MD+ 20 - Shop
+        dc.w    $1224                           ; MD+ 21 - Imelda
+        dc.w    $1225                           ; MD+ 22 - The Dark Princess
+        dc.w    $1226                           ; MD+ 23 - Bosel
+        dc.w    $120B                           ; MD+ 24 - Aniki
+        dc.w    $1206                           ; MD+ 25 - Soldier
+        dc.w    $1227                           ; MD+ 26 - Bernhardt
+        dc.w    $1207                           ; MD+ 27 - The Last Battle
+        dc.w    $112C                           ; MD+ 28 - Ending Theme (Part 1)
+        dc.w    $1230                           ; MD+ 29 - A Story Forever (Part 1)
+        dc.w    $112D                           ; MD+ 30 - A Story Forever (Part 2)
+        dc.w    $1131                           ; MD+ 31 - Ending Theme (Part 4)
+        dc.w    $122F                           ; MD+ 32 - Requiem
+        dc.w    MD_PLUS_TABLE_END
+
+; Central sound dispatcher: ----------------------------------------------------------------------
+
+MD_PLUS_SOUND_DISPATCH:
+        ; Nonzero priority is used by sound effects. Preserve the original path.
+        tst.b   (SOUND_PRIORITY).l
+        bne.w   WRITE_ORIGINAL_SOUND
+
+        movem.l D0-D3/A2,-(SP)
+        moveq   #0,D0
+        move.b  (SOUND_COMMAND).l,D0
+
+        cmpi.b  #$FE,D0
         beq.w   MD_PLUS_STOP
-        cmpi.b  #$FD,D0 
+        cmpi.b  #$FD,D0
         beq.w   MD_PLUS_FADE
 
-        move.l  #$00,D2                         ; Set D2 to 0 as counter (track number)
-        move.l  #$00,D3                         ; Set D3 to 0 as counter (table index)
-        lea     AUDIO_TBL,A2                    ; Load audio table address into A2
-LOOP
-        move.w  (A2,D3),D1                      ; Load table entry into D1
-        cmp.b   D1,D0                           ; Compare given sound ID in D0 to table entry loaded into D1
-        beq.s   READY                           ; If given sound ID matches the entry, D2 is our track number, so we branch to .READY
-                                                ; sound ID did not match:
-        addi    #1,D2                           ; Increment D2 (track number)
-        addi    #2,D3                           ; Increment D3 by word-size (table index)
-        cmp.b   #TOTAL_TRACKS+1,D2              ; If we reached the total number of tracks, abort. (plus 1 for loop-breaking)
-        beq.s   PASSTHROUGH                     ; If D2 equals TOTAL_TRACKS+1, no match found, branch to .PASSTHROUGH, break loop
-        bra.s   LOOP                            ; Branch to .LOOP
-READY
-        addi    #2,D2                           ; Increment D2 by 1 (skipped in the last repetition of the loop), increment again by 1 because track 1 is SEGA and tracks starting at 2
-        move.b  D2,D1                           ; Set play command, compose by setting byte from track-counter into word-sized command:
-                                                ; given: [cmd][sID] -> after: [cmd][trackNo]
+        moveq   #MD_PLUS_FIRST_BGM_TRACK,D2
+        lea     MD_PLUS_TRACK_TABLE,A2
+
+MD_PLUS_FIND_TRACK:
+        move.w  (A2)+,D1
+        cmpi.w  #MD_PLUS_TABLE_END,D1
+        beq.w   MD_PLUS_NOT_HANDLED
+        cmp.b   D1,D0
+        beq.s   MD_PLUS_TRACK_FOUND
+        addq.b  #1,D2
+        bra.s   MD_PLUS_FIND_TRACK
+
+MD_PLUS_TRACK_FOUND:
+        move.b  D2,D1                           ; Keep the $11/$12 command byte.
         jsr     WRITE_MD_PLUS_FUNCTION
-        movem.l (SP)+,D1-D3/A2
+        movem.l (SP)+,D0-D3/A2
         rts
 
-PASSTHROUGH
+MD_PLUS_NOT_HANDLED:
+        movem.l (SP)+,D0-D3/A2
+        bra.w   WRITE_ORIGINAL_SOUND
+
+MD_PLUS_STOP:
+        move.w  #$1300,D1                       ; Pause immediately.
+        jsr     WRITE_MD_PLUS_FUNCTION
+        movem.l (SP)+,D0-D3/A2
+        bra.w   WRITE_ORIGINAL_SOUND
+
+MD_PLUS_FADE:
+        move.w  #$13FF,D1                       ; Pause with fadeout.
+        jsr     WRITE_MD_PLUS_FUNCTION
+        movem.l (SP)+,D0-D3/A2
+        bra.w   WRITE_ORIGINAL_SOUND
+
+; Original $FD7A behavior, kept in one place for SFX and unhandled commands.
+
+WRITE_ORIGINAL_SOUND:
         move.w  #$100,(IO_Z80BUS).l
-PASSTHROUGH_WAIT_Z80BUS        
+
+WRITE_ORIGINAL_SOUND_WAIT:
         btst    #0,(IO_Z80BUS).l
-        bne.s   PASSTHROUGH_WAIT_Z80BUS
-        move.b  #0,($A01FFE).l
-        move.b  D0,($A01FFF).l
+        bne.s   WRITE_ORIGINAL_SOUND_WAIT
+        move.b  (SOUND_PRIORITY).l,(Z80_SOUND_PRIORITY).l
+        move.b  (SOUND_COMMAND).l,(Z80_SOUND_COMMAND).l
         move.w  #0,(IO_Z80BUS).l
-        movem.l (SP)+,D1-D3/A2
         rts
 
-MD_PLUS_STOP
-        move.w  #$1300,D1                               ; Send cmd: pause track, no fade
-        jsr     WRITE_MD_PLUS_FUNCTION
-        bra.w   PASSTHROUGH
+; MD+ interface: ----------------------------------------------------------------------------------
 
-MD_PLUS_FADE
-        move.w  #$13FF,D1                               ; Send cmd: pause track with fadeout
+MD_PLUS_PLAY_SEGA:
+        move.l  D1,-(SP)
+        move.w  #$1101,D1                       ; Play external track 1 once.
         jsr     WRITE_MD_PLUS_FUNCTION
-        bra.w   PASSTHROUGH
+        move.l  (SP)+,D1
+        move.l  #$0002D918,D0                   ; Replaced original instruction.
+        rts
 
 WRITE_MD_PLUS_FUNCTION:
-	move.w  #$CD54,(MD_PLUS_OVERLAY_PORT)           ; Open interface
-	move.w  D1,(MD_PLUS_CMD_PORT)                   ; Send command to interface
-	move.w  #$0000,(MD_PLUS_OVERLAY_PORT)           ; Close interface
-	rts
-
-PROCESS_GENERAL_SOUNDS:
-        cmpi.b  #0,($FFA6DB).l
-        beq     MD_PLUS_CANDIDATE
-        move.w  #$100,(IO_Z80BUS).l
-GENERAL_SOUNDS_WAIT_Z80BUS
-        btst    #0,(IO_Z80BUS).l
-        bne.s   GENERAL_SOUNDS_WAIT_Z80BUS
-        move.b  ($FFA6DB).l,($A01FFE).l
-        move.b  ($FFA6DA).l,($A01FFF).l
-        move.w  #0,(IO_Z80BUS).l
+        move.w  #$CD54,(MD_PLUS_OVERLAY_PORT)
+        move.w  D1,(MD_PLUS_CMD_PORT)
+        move.w  #$0000,(MD_PLUS_OVERLAY_PORT)
         rts
-MD_PLUS_CANDIDATE
-        move.l  D0,-(SP)
-        move.b  ($FFA6DA).l,D0
-        jsr     PLAY_SOUND
-        move.l  (SP)+,D0
-        rts
-
