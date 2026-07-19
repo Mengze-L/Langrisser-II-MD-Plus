@@ -24,9 +24,10 @@ MD_PLUS_TABLE_END              equ $FFFF
 
 ; Hooks: ------------------------------------------------------------------------------------------
 
-        ; Opening sequence. This replaces: move.l #$0002D918,D0
+        ; Restore the original instruction previously used for the late
+        ; opening-audio hook. Track 1 now starts at the sequence entry below.
         org     $2D1BE
-        jsr     MD_PLUS_PLAY_SEGA
+        move.l  #$0002D918,D0
 
         ; Replace the game's standard Z80 mailbox writer with our dispatcher.
         org     ORIGINAL_SOUND_SEND
@@ -53,8 +54,8 @@ MD_PLUS_TABLE_END              equ $FFFF
         jsr     QUEUE_BGM_01
         jmp     $2968C
 
-        org     $2D0C2                          ; Stop $FE
-        jsr     ORIGINAL_SOUND_STOP
+        org     $2D0C2                          ; Stop, then start SEGA track 1
+        jsr     START_SEGA_SEQUENCE_AUDIO
         jmp     $2D0EC
 
         org     $2D344                          ; BGM $2A
@@ -259,12 +260,16 @@ WRITE_ORIGINAL_SOUND_WAIT:
 
 ; MD+ interface: ----------------------------------------------------------------------------------
 
+START_SEGA_SEQUENCE_AUDIO:
+        jsr     ORIGINAL_SOUND_STOP              ; Stop MD+ and native music first.
+        jsr     MD_PLUS_PLAY_SEGA
+        rts
+
 MD_PLUS_PLAY_SEGA:
         move.l  D1,-(SP)
         move.w  #$1101,D1                       ; Play external track 1 once.
         jsr     WRITE_MD_PLUS_FUNCTION
         move.l  (SP)+,D1
-        move.l  #$0002D918,D0                   ; Replaced original instruction.
         rts
 
 WRITE_MD_PLUS_FUNCTION:
